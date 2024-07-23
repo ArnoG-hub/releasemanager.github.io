@@ -13,7 +13,7 @@
     width: 400px;
     background-color: #f0f0f0;
     box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3); /* Effet 3D */
-    border-radius: 10px; /* Coins arrondis pour un effet plus doux */
+    border-radius: 20px; /* Coins arrondis pour un effet plus doux */
     overflow: hidden; /* Empêche le contenu de déborder */
 }
 
