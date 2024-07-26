@@ -1,4 +1,17 @@
-const socket = io();
+// Configuration Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyAS9ie-yt-XgKtsGYRVXRZj17N2KiyhcLA",
+    authDomain: "releasemanagerag.firebaseapp.com",
+    databaseURL: "https://releasemanagerag-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "releasemanagerag",
+    storageBucket: "releasemanagerag.appspot.com",
+    messagingSenderId: "241143916735",
+    appId: "1:241143916735:web:ada7cc6de3b0bb50e43e0a"
+  };
+
+// Initialiser Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
 
 function saveChange(element, type) {
     const value = element.value;
@@ -10,18 +23,7 @@ function saveChange(element, type) {
         value: value
     };
 
-    fetch('/save-change', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + btoa('admin:password')
-        },
-        body: JSON.stringify(data)
-    }).then(response => response.json())
-      .then(data => console.log('Success:', data))
-      .catch((error) => console.error('Error:', error));
-
-    console.log('Data to be saved:', data);
+    firebase.database().ref('changes/' + releaseId).set(data);
 
     if (type === 'progress') {
         updateProgress(element);
@@ -40,12 +42,19 @@ function applyChange(change) {
     }
 }
 
-socket.on('initialize', (initialChanges) => {
-    initialChanges.forEach(change => applyChange(change));
-});
+function updateProgress(input) {
+    const progressBar = input.nextElementSibling;
+    const progressLabel = progressBar.querySelector('.progress-label');
+    const value = input.value;
+    progressBar.style.width = `${value}%`;
+    progressLabel.innerText = `${value}%`;
+}
 
-socket.on('change', (change) => {
-    applyChange(change);
+firebase.database().ref('changes').on('value', (snapshot) => {
+    const changes = snapshot.val();
+    for (let key in changes) {
+        applyChange(changes[key]);
+    }
 });
 
 document.addEventListener('DOMContentLoaded', function() {
