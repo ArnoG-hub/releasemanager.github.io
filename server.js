@@ -1,48 +1,51 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const fs = require('fs');
-const path = require('path');
-
+const http = require('http');
+const socketIo = require('socket.io');
 const app = express();
-const PORT = 3000;
+const server = http.createServer(app);
+const io = socketIo(server);
+const port = 3000;
 
-// Middleware pour parser le corps des requêtes
-app.use(bodyParser.json());
+// In-memory data store
+let changes = [];
 
-// Servir les fichiers statiques (HTML, CSS, JS)
-app.use(express.static(path.join(__dirname, 'public')));
+// Simple authentication middleware
+const authMiddleware = (req, res, next) => {
+    const auth = { login: 'admin', password: 'password' }; // Change this to your own credentials
 
-// Endpoint pour sauvegarder les modifications
-app.post('/save-change', (req, res) => {
-    const { releaseId, type, value } = req.body;
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
 
-    // Lire le fichier index.html
-    const filePath = path.join(__dirname, 'public', 'index.html');
-    fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) {
-            console.error('Error reading file:', err);
-            return res.status(500).send('Internal Server Error');
-        }
+    if (login && password && login === auth.login && password === auth.password) {
+        return next();
+    }
 
-        // Logique pour mettre à jour le contenu du fichier HTML
-        // (Ceci est un exemple simple et peut nécessiter des ajustements selon vos besoins)
-        let updatedData = data.replace(
-            new RegExp(`(<h2>${releaseId}</h2>)([\\s\\S]*?)(<textarea[\\s\\S]*?>)([\\s\\S]*?)(</textarea>)`),
-            `$1$2$3${value}$5`
-        );
+    res.set('WWW-Authenticate', 'Basic realm="401"');
+    res.status(401).send('Authentication required.');
+};
 
-        // Écrire les modifications dans le fichier index.html
-        fs.writeFile(filePath, updatedData, 'utf8', (err) => {
-            if (err) {
-                console.error('Error writing file:', err);
-                return res.status(500).send('Internal Server Error');
-            }
+// Save change endpoint (protected)
+app.post('/save-change', authMiddleware, (req, res) => {
+    const change = req.body;
+    changes.push(change);
+    io.emit('change', change); // Emit the change to all connected clients
+    res.status(200).send({ success: true });
+});
 
-            res.send('Change saved successfully');
-        });
+// Get changes endpoint
+app.get('/get-changes', (req, res) => {
+    res.status(200).send(changes);
+});
+
+io.on('connection', (socket) => {
+    console.log('New client connected');
+    socket.emit('initialize', changes); // Send initial changes to new client
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected');
     });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+server.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
 });

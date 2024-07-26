@@ -1,34 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>releasemanager.github.io</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
 
-<div class="release-container">
-    <div class="release-box">
-        <h2>Release 1</h2>
-        <div class="button-row">
-            <button class="changelog-btn" onclick="toggleChangelog(this)">ChangeLog</button>
-            <button class="bugreport-btn" onclick="showBugReport()">BugReport</button>
-            <button class="add-release-btn" onclick="addRelease()">+</button>
-            <button class="remove-release-btn" onclick="confirmRemoveRelease(this)">-</button>
-            <button class="rename-release-btn" onclick="renameRelease(this)">Renommer</button>
-        </div>
-        <div class="changelog-area hidden">
-            <textarea placeholder="Entrez les changements ici" oninput="saveChange(this, 'changelog')"></textarea>
-        </div>
-        <div class="progress-container">
-            <input type="number" class="progress-input" min="0" max="100" value="50" onchange="saveChange(this, 'progress')">
-            <progress class="progress-bar" value="50" max="100"></progress>
-            <span class="progress-label">50%</span>
-        </div>
-    </div>
-</div>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAS9ie-yt-XgKtsGYRVXRZj17N2KiyhcLA",
+    authDomain: "releasemanagerag.firebaseapp.com",
+    databaseURL: "https://releasemanagerag-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "releasemanagerag",
+    storageBucket: "releasemanagerag.appspot.com",
+    messagingSenderId: "241143916735",
+    appId: "1:241143916735:web:ada7cc6de3b0bb50e43e0a"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
 
-<script src="script.js"></script>
-</body>
-</html>
+  function saveChange(element, type) {
+      const value = element.value;
+      const releaseId = element.closest('.release-box').querySelector('h2').innerText;
+
+      const data = {
+          releaseId: releaseId,
+          type: type,
+          value: value
+      };
+
+      firebase.database().ref('changes/' + releaseId).set(data);
+
+      if (type === 'progress') {
+          updateProgress(element);
+      }
+  }
+
+  function applyChange(change) {
+      const releaseBox = document.querySelector(`.release-box h2:contains('${change.releaseId}')`).closest('.release-box');
+      if (change.type === 'progress') {
+          const progressInput = releaseBox.querySelector('.progress-input');
+          progressInput.value = change.value;
+          updateProgress(progressInput);
+      } else if (change.type === 'changelog') {
+          const changelogArea = releaseBox.querySelector('textarea');
+          changelogArea.value = change.value;
+      }
+  }
+
+  firebase.database().ref('changes').on('value', (snapshot) => {
+      const changes = snapshot.val();
+      for (let key in changes) {
+          applyChange(changes[key]);
+      }
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+      var progressInputs = document.querySelectorAll('.progress-input');
+      progressInputs.forEach(input => updateProgress(input));
+  });
+</script>
